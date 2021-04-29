@@ -1,2 +1,4 @@
 # hypixel-nim
-An interface for the Hypixel API. You probably shouldn't use this, as I only make what I need. PRs welcome, though.
+A pure-Nim interface for the Hypixel API.
+
+⚠️ This is a work-in-progress, so you probably shouldn't use it yet! ⚠️
