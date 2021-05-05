@@ -13,9 +13,9 @@ proc echoAll(g: Guild) =
   echo g.publiclyListed
   echo g.joinable
   echo g.legacyRanking
-  echo g.achievements["winners"]
-  echo g.achievements["experience kings"]
-  echo g.achievements["online players"]
+  echo g.achievements.winners
+  echo g.achievements.experienceKings
+  echo g.achievements.onlinePlayers
   echo g.preferredGames
   for m in g.members:
     echo (m.uuid, m.joined, m.rank, m.expHistory, m.questParticipation, m.name)
