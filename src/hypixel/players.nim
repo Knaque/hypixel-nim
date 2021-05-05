@@ -170,6 +170,10 @@ proc playerConstructor(j: JsonNode): Player =
   stats.duels.kdr = stats.duels.kills / stats.duels.deaths
   stats.duels.wlr = stats.duels.wins / stats.duels.losses
 
+  var monthlyRankColor: MonthlyRankColor
+  try: monthlyRankColor = player["monthlyRankColor"].getMonthlyRankColor
+  except KeyError: monthlyRankColor = mGold
+
   return Player(
     id: player["_id"].getStr, 
     uuid: uuid, 
@@ -178,7 +182,7 @@ proc playerConstructor(j: JsonNode): Player =
     mcVersionRp: player["mcVersionRp"].getStr, 
     rankPlusColor: player["rankPlusColor"].getRankPlusColor, 
     mostRecentGameType: player["mostRecentGameType"].getStr, 
-    monthlyRankColor: player["monthlyRankColor"].getMonthlyRankColor,
+    monthlyRankColor: monthlyRankColor,
     firstLogin: fromUnixMs(player["firstLogin"].getInt), 
     lastLogin: fromUnixMs(player["lastLogin"].getInt), 
     lastLogout: fromUnixMs(player["lastLogout"].getInt), 
