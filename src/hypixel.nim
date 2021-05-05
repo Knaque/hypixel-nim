@@ -1,10 +1,10 @@
-## Import and export everything that needs it.
+## Import and export everything applicable.
 
-from hypixel/hycommon import newHypixelApi, newAsyncHypixelApi
+from hypixel/common import newHypixelApi, newAsyncHypixelApi
 export newHypixelApi, newAsyncHypixelApi
 
-import hypixel/[guilds]
-export guilds
+import hypixel/[guilds, players]
+export guilds, players
 
-import options, times
-export options, times
+import options, times, tables
+export options, times, tables

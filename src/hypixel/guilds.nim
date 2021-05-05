@@ -1,17 +1,20 @@
-import hycommon, times, flextables, json, sequtils, httpclient, strformat, asyncdispatch, options, math
-export flextables.`[]`
+import common, times, json, sequtils, httpclient, strformat, asyncdispatch, options, math
 
 const EXP_NEEDED = [100000, 150000, 250000, 500000, 750000, 1000000, 1250000, 1500000, 2000000, 2500000, 2500000, 2500000, 2500000, 2500000, 3000000]
 
 type
   GuildObject = object of HypixelObject ## Root object for the Hypixel Guild API.
+
+  ExpHistoryEntry* = object of GuildObject
+    date*: DateTime
+    exp*: int
   GuildMember* = object of GuildObject
     ## An object representing a member of a guild.
     name*: Option[string]
     joined*: DateTime
     rank*, uuid*: string
     questParticipation*: Option[int]
-    expHistory*: array[7, int]
+    expHistory*: array[7, ExpHistoryEntry]
 
   GuildRank* = object of GuildObject
     ## An object representing a rank in a guild.
@@ -19,37 +22,39 @@ type
     default*: bool
     created*: DateTime
     priority*: int
+  
+  GuildExpByGameType* = object of GuildObject
+    bedwars*, speedUhc* , tntGames*, buildBattle*, uhc*, legacy*, arena*: int
+    housing*, walls*, skywars*, pit*, paintball*, battleground*: int
+    quakecraft*, mcgo*, duels*, murderMystery*, vampirez*, arcade*: int
+    superSmash*, walls3, skyblock*, prototype*, survivalGames*: int
+    gingerbread*, replay*: int
+
+  Achievements* = object of GuildObject
+    winners*, experienceKings*, onlinePlayers*: int
+
+  BannerBase = object of GuildObject
+  BannerPattern* = object of BannerBase
+    pattern*, color*: string
+  Banner* = object of BannerBase
+    base*: int
+    patterns*: seq[BannerPattern]
 
   Guild* = object of GuildObject
     ## An object representing a Guild.
-    id*: string
-    coins*, coinsEver*: int
+    id*, name*, tagColor*, description*, nameLower*, tag*: string
+    coins*, coinsEver*, exp*, legacyRanking*, chatMute*: int
     created*: DateTime
-    joinable*: bool
+    joinable*, publiclyListed*: bool
     members*: seq[GuildMember]
-    name*: string
-    publiclyListed*: bool
-    banner*: tuple[base: int, patterns: seq[tuple[pattern, color: string]]]
-    tagColor*: string
-    achievements*: Flextable[int]
-    exp*, legacyRanking*: int
+    banner*: Banner
+    achievements*: Achievements
     ranks*: seq[GuildRank]
-    chatMute*: int
     preferredGames*: seq[string]
-    description*, nameLower*, tag*: string
-    guildExpByGameType*: Flextable[int]
+    guildExpByGameType*: GuildExpByGameType
+    level*: int
 
-proc level*(g: Guild): int =
-  ## Calculate the guild's level from its exp.
-  var exp = g.exp
-  var level = 0
-  for i in 0..1000:
-    var need = 0
-    if i >= EXP_NEEDED.len: need = EXP_NEEDED[^1]
-    else: need = EXP_NEEDED[i]
-    if exp - need < 0: return toInt(round((level.toFloat + (exp / need)) * 100) / 100)
-    level += 1; exp -= need
-  return 1000
+
 
 proc guildConstructor(j: JsonNode): Guild =
   ## Turns the JSON into a Guild object with GuildMember and GuildRank children.
@@ -69,10 +74,11 @@ proc guildConstructor(j: JsonNode): Guild =
     try: questParticipation = some(m["questParticipation"].getInt)
     except: questParticipation = none(int)
 
-    var expHistory: array[7, int]
+    var expHistory: array[7, ExpHistoryEntry]
     var c = 0
-    for _, x in m["expHistory"].pairs:
-      expHistory[c] = x.getInt
+    for d, e in m["expHistory"].pairs:
+      expHistory[c].date = d.parse("yyyy-MM-dd", utc())
+      expHistory[c].exp = e.getInt
       c += 1
 
     members.add(
@@ -87,17 +93,13 @@ proc guildConstructor(j: JsonNode): Guild =
     )
 
   # Construct the banner field.
-  var banner: tuple[base: int, patterns: seq[tuple[pattern, color: string]]]
+  var banner: Banner
   banner.base = guild["banner"]["Base"].getInt
   for p in guild["banner"]["Patterns"].getElems:
-    var pattern: tuple[pattern, color: string]
+    var pattern: BannerPattern
     pattern.pattern = p["Pattern"].getStr
     pattern.color = p["Color"].getStr
-
-  # Construct the achievements field.
-  var achievements: Flextable[int]
-  for a, v in guild["achievements"].pairs:
-    achievements[a] = v.getInt
+    banner.patterns.add(pattern)
 
   # Construct and collect each GuildRank object.
   var ranks: seq[GuildRank]
@@ -109,16 +111,39 @@ proc guildConstructor(j: JsonNode): Guild =
       created: fromUnixMs(r["created"].getInt),
       priority: r["priority"].getInt
     )
-
-  # Construct the preferredGames field.
-  var preferredGames = toSeq(guild["preferredGames"].getElems).map(
-    proc(x: JsonNode): string = x.getStr
-  )
   
   # Construct the guildExpByGameType field.
-  var guildExpByGameType: Flextable[int]
-  for g, x in guild["guildExpByGameType"].pairs:
-    guildExpByGameType[g] = x.getInt
+  let gebgt = guild["guildExpByGameType"]
+  var guildExpByGameType = GuildExpByGameType(
+    bedwars: gebgt["BEDWARS"].getInt, speedUhc: gebgt["SPEED_UHC"].getInt,
+    tntGames: gebgt["TNTGAMES"].getInt,
+    buildBattle: gebgt["BUILD_BATTLE"].getInt, uhc: gebgt["UHC"].getInt,
+    legacy: gebgt["LEGACY"].getInt, arena: gebgt["ARENA"].getInt,
+    housing: gebgt["HOUSING"].getInt, walls: gebgt["WALLS"].getInt,
+    skywars: gebgt["SKYWARS"].getInt, pit: gebgt["PIT"].getInt,
+    paintball: gebgt["PAINTBALL"].getInt,
+    battleground: gebgt["BATTLEGROUND"].getInt,
+    quakecraft: gebgt["QUAKECRAFT"].getInt, mcgo: gebgt["MCGO"].getInt,
+    duels: gebgt["DUELS"].getInt, murderMystery: gebgt["MURDER_MYSTERY"].getInt,
+    vampirez: gebgt["VAMPIREZ"].getInt, arcade: gebgt["ARCADE"].getInt,
+    superSmash: gebgt["SUPER_SMASH"].getInt, walls3: gebgt["WALLS3"].getInt,
+    skyblock: gebgt["SKYBLOCK"].getInt, prototype: gebgt["PROTOTYPE"].getInt,
+    survivalGames: gebgt["SURVIVAL_GAMES"].getInt,
+    gingerbread: gebgt["GINGERBREAD"].getInt, replay: gebgt["REPLAY"].getInt
+  )
+
+  # Calculate the guild's level from its exp
+  let exp = guild["exp"].getInt
+  proc calcLevel(e: int): int =
+    var exp = e
+    var level = 0
+    for i in 0..1000:
+      var need = 0
+      if i >= EXP_NEEDED.len: need = EXP_NEEDED[^1]
+      else: need = EXP_NEEDED[i]
+      if exp - need < 0: return toInt(round((level.toFloat + (exp / need)) * 100) / 100)
+      level += 1; exp -= need
+    return 1000
 
   # Construct the final Guild object and return it.
   return Guild(
@@ -132,17 +157,26 @@ proc guildConstructor(j: JsonNode): Guild =
     publiclyListed: guild["publiclyListed"].getBool,
     banner: banner,
     tagColor: guild["tagColor"].getStr,
-    achievements: achievements,
-    exp: guild["exp"].getInt,
+    achievements: Achievements(
+      winners: guild["achievements"]["WINNERS"].getInt,
+      experienceKings: guild["achievements"]["EXPERIENCE_KINGS"].getInt,
+      onlinePlayers: guild["achievements"]["ONLINE_PLAYERS"].getInt
+    ),
+    exp: exp,
     legacyRanking: guild["legacyRanking"].getInt + 1,
     ranks: ranks,
     chatMute: guild["chatMute"].getInt,
-    preferredGames: preferredGames,
+    preferredGames: toSeq(guild["preferredGames"].getElems).map(
+      proc(x: JsonNode): string = x.getStr
+    ),
     description: guild["description"].getStr,
     nameLower: guild["name_lower"].getStr,
     tag: guild["tag"].getStr,
-    guildExpByGameType: guildExpByGameType
+    guildExpByGameType: guildExpByGameType,
+    level: calcLevel(exp)
   )
+
+
 
 proc getGuildFromId*(api: HypixelApi or AsyncHypixelApi, id: string): Future[Guild] {.multisync.} =
   ## Get a Guild object from a guild's ID.
