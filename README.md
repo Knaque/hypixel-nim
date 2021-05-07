@@ -1,4 +1,5 @@
-# hypixel-nim
+![hypixel-nim banner](https://knaque.dev/ext/hypixel_banner.png)
+
 A pure-Nim interface for the Hypixel API.
 
 The Friends and Guilds APIs are complete. The Player API still needs work, though.
