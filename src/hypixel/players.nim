@@ -30,11 +30,11 @@ type
   Player* = object of PlayerObject
     id*, uuid*, playerName*, displayName*, mcVersionRp*: string
     mostRecentGameType*: string
-    firstLogin*, lastLogin*, lastLogout*, lastClaimedReward*: DateTime
+    firstLogin*, lastLogin*, lastLogout*: DateTime
+    lastClaimedReward*: Option[DateTime]
     knownAliases*, knownAliasesLower*, achievementsOneTime*: seq[string]
     friendRequestsUuid*, achievementTracking*: seq[string]
-    networkExp*, karma*, totalRewards*, totalDailyRewards*, rewardStreak*: int
-    rewardScore*, rewardHighScore*, achievementPoints*: int
+    networkExp*, karma*, achievementPoints*: int
     levelUp*: LevelUp
     achievementRewardsNew*: AchievementRewardsNew
     achievements*: Table[string, int]
@@ -63,29 +63,33 @@ proc getSeq(j: JsonNode): seq[string] =
 
 proc getDTTable(j: JsonNode): AchievementRewardsNew =
   var t = initTable[int, DateTime]()
-  for a, b in j.pairs:
-    t[a[11..^1].parseInt] = b.getDateTime
+  try:
+    for a, b in j["achievementRewardsNew"].pairs:
+      t[a[11..^1].parseInt] = b.getDateTime
+  except KeyError: discard
   result.t = t
 
 proc getIntTable(j: JsonNode): Table[string, int] =
   for a, b in j.pairs: result[a] = b.getInt
 
 proc getRankPlusColor(j: JsonNode): RankPlusColor =
-  case j.getStr
-  of "GOLD": return Gold 
-  of "GREEN": return Green
-  of "YELLOW": return Yellow
-  of "LIGHT_PURPLE": return LightPurple
-  of "WHITE": return White
-  of "BLUE": return Blue
-  of "DARK_GREEN": return DarkGreen
-  of "DARK_RED": return DarkRed
-  of "DARK_AQUA": return DarkAqua
-  of "DARK_PURPLE": return DarkPurple
-  of "DARK_GRAY": return DarkGray
-  of "BLACK": return Black
-  of "DARK_BLUE": return DarkBlue
-  else: return Red
+  try:
+    case j.getStr
+    of "GOLD": return Gold 
+    of "GREEN": return Green
+    of "YELLOW": return Yellow
+    of "LIGHT_PURPLE": return LightPurple
+    of "WHITE": return White
+    of "BLUE": return Blue
+    of "DARK_GREEN": return DarkGreen
+    of "DARK_RED": return DarkRed
+    of "DARK_AQUA": return DarkAqua
+    of "DARK_PURPLE": return DarkPurple
+    of "DARK_GRAY": return DarkGray
+    of "BLACK": return Black
+    of "DARK_BLUE": return DarkBlue
+    else: return Red
+  except KeyError: return Gold
 
 proc getMonthlyRankColor(j: JsonNode): MonthlyRankColor =
   if j.getStr == "AQUA": return mAqua
@@ -109,7 +113,7 @@ proc playerConstructor(j: JsonNode): Player =
   try: levelUp.mvpPlus = some(player["levelUp_MVP_PLUS"].getDateTime)
   except:levelUp.mvpPlus = none(DateTime)
 
-  let sm = player["socialMedia"]["links"]
+  let sm = player{"socialMedia"}{"links"}
   var socialMedia: SocialMedia
   socialMedia.discord = sm{"DISCORD"}.getStr
   socialMedia.twitch = sm{"TWITCH"}.getStr
@@ -137,38 +141,38 @@ proc playerConstructor(j: JsonNode): Player =
 
   var stats: Stats
   let skywars = player["stats"]["SkyWars"]
-  stats.skywars.star = player["achievements"]["skywars_you_re_a_star"].getInt
-  stats.skywars.heads = player["achievements"]["skywars_heads"].getInt
-  stats.skywars.coins = skywars["coins"].getInt
-  stats.skywars.kills = skywars["kills"].getInt
-  stats.skywars.assists = skywars["assists"].getInt
-  stats.skywars.deaths = skywars["deaths"].getInt
-  stats.skywars.wins = skywars["wins"].getInt
-  stats.skywars.losses = skywars["losses"].getInt
-  stats.skywars.kdr = stats.skywars.kills / stats.skywars.deaths
-  stats.skywars.wlr = stats.skywars.wins / stats.skywars.losses
+  stats.skywars.star = player["achievements"]{"skywars_you_re_a_star"}.getInt
+  stats.skywars.heads = player["achievements"]{"skywars_heads"}.getInt
+  stats.skywars.coins = skywars{"coins"}.getInt
+  stats.skywars.kills = skywars{"kills"}.getInt
+  stats.skywars.assists = skywars{"assists"}.getInt
+  stats.skywars.deaths = skywars{"deaths"}.getInt
+  stats.skywars.wins = skywars{"wins"}.getInt
+  stats.skywars.losses = skywars{"losses"}.getInt
+  stats.skywars.kdr = stats.skywars.kills / stats.skywars.deaths.clamp(1, high(int))
+  stats.skywars.wlr = stats.skywars.wins / stats.skywars.losses.clamp(1, high(int))
   let bedwars = player["stats"]["Bedwars"]
-  stats.bedwars.star = player["achievements"]["bedwars_level"].getInt
-  stats.bedwars.coins = bedwars["coins"].getInt
-  stats.bedwars.winstreak = bedwars["winstreak"].getInt
-  stats.bedwars.kills = bedwars["kills_bedwars"].getInt
-  stats.bedwars.deaths = bedwars["deaths_bedwars"].getInt
-  stats.bedwars.finalKills = bedwars["final_kills_bedwars"].getInt
-  stats.bedwars.finalDeaths = bedwars["final_deaths_bedwars"].getInt
-  stats.bedwars.wins = bedwars["wins_bedwars"].getInt
-  stats.bedwars.losses = bedwars["losses_bedwars"].getInt
-  stats.bedwars.bedsBroken = bedwars["beds_broken_bedwars"].getInt
-  stats.bedwars.kdr = stats.bedwars.kills / stats.bedwars.deaths
-  stats.bedwars.fkdr = stats.bedwars.finalKills / stats.bedwars.finalDeaths
-  stats.bedwars.wlr = stats.bedwars.wins / stats.bedwars.losses
+  stats.bedwars.star = player["achievements"]{"bedwars_level"}.getInt
+  stats.bedwars.coins = bedwars{"coins"}.getInt
+  stats.bedwars.winstreak = bedwars{"winstreak"}.getInt
+  stats.bedwars.kills = bedwars{"kills_bedwars"}.getInt
+  stats.bedwars.deaths = bedwars{"deaths_bedwars"}.getInt
+  stats.bedwars.finalKills = bedwars{"final_kills_bedwars"}.getInt
+  stats.bedwars.finalDeaths = bedwars{"final_deaths_bedwars"}.getInt
+  stats.bedwars.wins = bedwars{"wins_bedwars"}.getInt
+  stats.bedwars.losses = bedwars{"losses_bedwars"}.getInt
+  stats.bedwars.bedsBroken = bedwars{"beds_broken_bedwars"}.getInt
+  stats.bedwars.kdr = stats.bedwars.kills / stats.bedwars.deaths.clamp(1, high(int))
+  stats.bedwars.fkdr = stats.bedwars.finalKills / stats.bedwars.finalDeaths.clamp(1, high(int))
+  stats.bedwars.wlr = stats.bedwars.wins / stats.bedwars.losses.clamp(1, high(int))
   let duels = player["stats"]["Duels"]
-  stats.duels.coins = duels["coins"].getInt
-  stats.duels.kills = duels["kills"].getInt
-  stats.duels.deaths = duels["deaths"].getInt
-  stats.duels.wins = duels["wins"].getInt
-  stats.duels.losses = duels["losses"].getInt
-  stats.duels.kdr = stats.duels.kills / stats.duels.deaths
-  stats.duels.wlr = stats.duels.wins / stats.duels.losses
+  stats.duels.coins = duels{"coins"}.getInt
+  stats.duels.kills = duels{"kills"}.getInt
+  stats.duels.deaths = duels{"deaths"}.getInt
+  stats.duels.wins = duels{"wins"}.getInt
+  stats.duels.losses = duels{"losses"}.getInt
+  stats.duels.kdr = stats.duels.kills / stats.duels.deaths.clamp(1, high(int))
+  stats.duels.wlr = stats.duels.wins / stats.duels.losses.clamp(1, high(int))
 
   var monthlyRankColor: MonthlyRankColor
   try: monthlyRankColor = player["monthlyRankColor"].getMonthlyRankColor
@@ -179,14 +183,13 @@ proc playerConstructor(j: JsonNode): Player =
     uuid: uuid, 
     playerName: player["playername"].getStr, 
     displayName: player["displayname"].getStr, 
-    mcVersionRp: player["mcVersionRp"].getStr, 
-    rankPlusColor: player["rankPlusColor"].getRankPlusColor, 
+    mcVersionRp: player{"mcVersionRp"}.getStr, 
+    rankPlusColor: player.getRankPlusColor, 
     mostRecentGameType: player{"mostRecentGameType"}.getStr, 
     monthlyRankColor: monthlyRankColor,
     firstLogin: player["firstLogin"].getDateTime, 
     lastLogin: player["lastLogin"].getDateTime, 
-    lastLogout: player["lastLogout"].getDateTime, 
-    lastClaimedReward: player["lastClaimedReward"].getDateTime,
+    lastLogout: player["lastLogout"].getDateTime,
     knownAliases: player["knownAliases"].getSeq, 
     knownAliasesLower: player["knownAliasesLower"].getSeq, 
     achievementsOneTime: player["achievementsOneTime"].getSeq,
@@ -194,14 +197,9 @@ proc playerConstructor(j: JsonNode): Player =
     achievementTracking: player["achievementTracking"].getSeq, 
     networkExp: player["networkExp"].getInt, 
     karma: player["karma"].getInt, 
-    totalRewards: player["totalRewards"].getInt, 
-    totalDailyRewards: player["totalDailyRewards"].getInt, 
-    rewardStreak: player["rewardStreak"].getInt,
-    rewardScore: player["rewardScore"].getInt, 
-    rewardHighScore: player["rewardHighScore"].getInt, 
     achievementPoints: player["achievementPoints"].getInt,
     levelUp: levelUp,
-    achievementRewardsNew: player["achievementRewardsNew"].getDTTable,
+    achievementRewardsNew: player.getDTTable,
     achievements: player["achievements"].getIntTable,
     socialMedia: socialMedia,
     rank: rank,
