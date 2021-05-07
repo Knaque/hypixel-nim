@@ -1,4 +1,4 @@
-import times, httpclient
+import times, httpclient, json
 
 type
   HypixelObject* = object of RootObj ## Root object for the Hypixel API.
@@ -21,3 +21,6 @@ proc newAsyncHypixelApi*(token: string): AsyncHypixelApi =
 proc fromUnixMs*(time: int64): DateTime =
   ## Support for Unix timestamps in milliseconds. Returns the DateTime object directly for my own convenience.
   inZone(fromUnixFloat(time.float / 1000), utc())
+
+proc getDateTime*(j: JsonNode): DateTime =
+  j.getInt.fromUnixMs

@@ -64,7 +64,7 @@ proc getSeq(j: JsonNode): seq[string] =
 proc getDTTable(j: JsonNode): AchievementRewardsNew =
   var t = initTable[int, DateTime]()
   for a, b in j.pairs:
-    t[a[11..^1].parseInt] = b.getInt.fromUnixMs
+    t[a[11..^1].parseInt] = b.getDateTime
   result.t = t
 
 proc getIntTable(j: JsonNode): Table[string, int] =
@@ -100,13 +100,13 @@ proc playerConstructor(j: JsonNode): Player =
   let uuid = player["uuid"].getStr
 
   var levelUp: LevelUp
-  try: levelUp.vip = some(player["levelUp_VIP"].getInt.fromUnixMs)
+  try: levelUp.vip = some(player["levelUp_VIP"].getDateTime)
   except: levelUp.vip = none(DateTime)
-  try: levelUp.vipPlus = some(player["levelUp_VIP_PLUS"].getInt.fromUnixMs)
+  try: levelUp.vipPlus = some(player["levelUp_VIP_PLUS"].getDateTime)
   except: levelUp.vipPlus = none(DateTime)
-  try: levelUp.mvp = some(player["levelUp_MVP"].getInt.fromUnixMs)
+  try: levelUp.mvp = some(player["levelUp_MVP"].getDateTime)
   except: levelUp.mvp = none(DateTime)
-  try: levelUp.mvpPlus = some(player["levelUp_MVP_PLUS"].getInt.fromUnixMs)
+  try: levelUp.mvpPlus = some(player["levelUp_MVP_PLUS"].getDateTime)
   except:levelUp.mvpPlus = none(DateTime)
 
   let sm = player["socialMedia"]["links"]
@@ -181,12 +181,12 @@ proc playerConstructor(j: JsonNode): Player =
     displayName: player["displayname"].getStr, 
     mcVersionRp: player["mcVersionRp"].getStr, 
     rankPlusColor: player["rankPlusColor"].getRankPlusColor, 
-    mostRecentGameType: player["mostRecentGameType"].getStr, 
+    mostRecentGameType: player{"mostRecentGameType"}.getStr, 
     monthlyRankColor: monthlyRankColor,
-    firstLogin: fromUnixMs(player["firstLogin"].getInt), 
-    lastLogin: fromUnixMs(player["lastLogin"].getInt), 
-    lastLogout: fromUnixMs(player["lastLogout"].getInt), 
-    lastClaimedReward: fromUnixMs(player["lastClaimedReward"].getInt),
+    firstLogin: player["firstLogin"].getDateTime, 
+    lastLogin: player["lastLogin"].getDateTime, 
+    lastLogout: player["lastLogout"].getDateTime, 
+    lastClaimedReward: player["lastClaimedReward"].getDateTime,
     knownAliases: player["knownAliases"].getSeq, 
     knownAliasesLower: player["knownAliasesLower"].getSeq, 
     achievementsOneTime: player["achievementsOneTime"].getSeq,

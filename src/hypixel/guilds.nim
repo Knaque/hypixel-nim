@@ -84,7 +84,7 @@ proc guildConstructor(j: JsonNode): Guild =
     members.add(
       GuildMember(
         name: name,
-        joined: fromUnixMs(m["joined"].getInt),
+        joined: m["joined"].getDateTime,
         rank: m["rank"].getStr,
         uuid: m["uuid"].getStr,
         questParticipation: questParticipation,
@@ -108,7 +108,7 @@ proc guildConstructor(j: JsonNode): Guild =
       name: r["name"].getStr,
       default: r["default"].getBool,
       tag: r["tag"].getStr,
-      created: fromUnixMs(r["created"].getInt),
+      created: r["created"].getDateTime,
       priority: r["priority"].getInt
     )
   
@@ -150,7 +150,7 @@ proc guildConstructor(j: JsonNode): Guild =
     id: guild["_id"].getStr,
     coins: guild["coins"].getInt,
     coinsEver: guild["coinsEver"].getInt,
-    created: fromUnixMs(guild["created"].getInt),
+    created: guild["created"].getDateTime,
     joinable: guild["joinable"].getBool,
     members: members,
     name: guild["name"].getStr,
