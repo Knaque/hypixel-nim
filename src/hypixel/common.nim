@@ -23,4 +23,5 @@ proc fromUnixMs*(time: int64): DateTime =
   inZone(fromUnixFloat(time.float / 1000), utc())
 
 proc getDateTime*(j: JsonNode): DateTime =
+  ## Shorthand for `j["someField"].getInt.fromUnixMs`
   j.getInt.fromUnixMs

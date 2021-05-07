@@ -2,15 +2,15 @@ import common, times, tables, json, asyncdispatch, httpclient, strformat, option
 export gamestats.level
 
 type
-  PlayerObject = object of HypixelObject
+  PlayerObject = object of HypixelObject ## The roof object for the Player API.
 
-  Rank* = enum
+  Rank* = enum ## An enum describing every rank on the server.
     Non, Vip, VipPlus, Mvp, MvpPlus, MvpPlusPlus, Helper, Mod, Admin, Owner, YouTube,
     Sloth, Events, Mcp, Pig
-  RankPlusColor* = enum
+  RankPlusColor* = enum ## An enum describing every color the + of a rank can be.
     Red, Gold, Green, Yellow, LightPurple, White, Blue, DarkGreen, DarkRed,
     DarkAqua, DarkPurple, DarkGray, Black, DarkBlue
-  MonthlyRankColor* = enum
+  MonthlyRankColor* = enum ## An enum describing the two colors an MVP++ can be.
     mGold, mAqua
 
   LevelUp* = object of PlayerObject

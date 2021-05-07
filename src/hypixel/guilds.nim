@@ -6,6 +6,7 @@ type
   GuildObject = object of HypixelObject ## Root object for the Hypixel Guild API.
 
   ExpHistoryEntry* = object of GuildObject
+    ## An object representing a single day in the Gexp History log.
     date*: DateTime
     exp*: int
   GuildMember* = object of GuildObject
@@ -24,6 +25,7 @@ type
     priority*: int
   
   GuildExpByGameType* = object of GuildObject
+    ## An object containing how much Gexp the guild has earned per gamemode.
     bedwars*, speedUhc* , tntGames*, buildBattle*, uhc*, legacy*, arena*: int
     housing*, walls*, skywars*, pit*, paintball*, battleground*: int
     quakecraft*, mcgo*, duels*, murderMystery*, vampirez*, arcade*: int
@@ -31,12 +33,15 @@ type
     gingerbread*, replay*: int
 
   Achievements* = object of GuildObject
+    ## An object containing the three achievements: `winners`, `experienceKings`, and `onlinePLayers`.
     winners*, experienceKings*, onlinePlayers*: int
 
-  BannerBase = object of GuildObject
+  BannerBase = object of GuildObject ## Root object for banners.
   BannerPattern* = object of BannerBase
+    ## An object representing a single banner pattern.
     pattern*, color*: string
   Banner* = object of BannerBase
+    ## An object representing an entire banner.
     base*: int
     patterns*: seq[BannerPattern]
 

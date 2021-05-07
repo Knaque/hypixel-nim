@@ -1,3 +1,5 @@
+## Contains the math and logic used to determine a players network level.
+
 from math import floor, sqrt, floorMod
 
 const

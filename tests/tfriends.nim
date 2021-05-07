@@ -5,9 +5,15 @@ let apikey = readFile(getAppDir() / "apikey.txt").strip()
 
 proc echoAll(f: FriendsList) =
   echo f.owner
-  for i, friend in f.records:
+  echo f.len
+  echo f[0]
+  echo f[^1]
+  echo f[0..1]
+  echo f[0..^200]
+  for i, friend in f:
     echo friend
     echo f.friend(friend)
+    if i == 10: break
 
 block Synchronous:
   var api = newHypixelApi(apikey)

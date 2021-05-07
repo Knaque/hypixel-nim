@@ -1,4 +1,4 @@
-## Import and export everything applicable.
+## This file contains no actual code; it just imports and exports everything that needs to be public.
 
 from hypixel/common import newHypixelApi, newAsyncHypixelApi
 export newHypixelApi, newAsyncHypixelApi
