@@ -1,4 +1,4 @@
-import common
+import hypixelcommon
 
 type
   GameStats = object of HypixelObject ## Root object for Hypixel game information.

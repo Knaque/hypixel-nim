@@ -1,4 +1,4 @@
-import common, times, asyncdispatch, json, httpclient, strformat
+import hypixelcommon, times, asyncdispatch, json, httpclient, strformat, getters
 
 type
   FriendObject = object of HypixelObject ## Root object for the Friends API.
@@ -46,17 +46,18 @@ proc friendsListConstructor(j: JsonNode): FriendsList =
 
   result.owner = j["uuid"].getStr
 
-  let records = j["records"]
+  let records = j{"records"}
 
-  for r in records.getElems:
-    result.records.add(
-      Friend(
-        id: r["_id"].getStr,
-        sender: r["uuidSender"].getStr,
-        receiver: r["uuidReceiver"].getStr,
-        started: r["started"].getDateTime,
+  if records != nil:
+    for r in records.getElems:
+      result.records.add(
+        Friend(
+          id: r{"_id"}.getStr,
+          sender: r{"uuidSender"}.getStr,
+          receiver: r{"uuidReceiver"}.getStr,
+          started: r{"started"}.getTime,
+        )
       )
-    )
 
 
 

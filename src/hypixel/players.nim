@@ -1,37 +1,30 @@
-import common, times, tables, json, asyncdispatch, httpclient, strformat, options, gamestats, sequtils, strutils, leveling
-export gamestats.level
+import hypixelcommon, times, tables, json, asyncdispatch, httpclient, strformat, options, gamestats, strutils, leveling, getters, playercommon
+export gamestats.level, playercommon.AchievementRewardsNew, playercommon.PlusColor, playercommon.MonthlyRankColor
 
 type
-  PlayerObject = object of HypixelObject ## The roof object for the Player API.
-
   Rank* = enum ## An enum describing every rank on the server.
     Non, Vip, VipPlus, Mvp, MvpPlus, MvpPlusPlus, Helper, Mod, Admin, Owner, YouTube,
     Sloth, Events, Mcp, Pig
-  RankPlusColor* = enum ## An enum describing every color the + of a rank can be.
-    Red, Gold, Green, Yellow, LightPurple, White, Blue, DarkGreen, DarkRed,
-    DarkAqua, DarkPurple, DarkGray, Black, DarkBlue
-  MonthlyRankColor* = enum ## An enum describing the two colors an MVP++ can be.
-    mGold, mAqua
 
   LevelUp* = object of PlayerObject
+    ## The times at which a player bought a rank upgrade. Returns `none(DateTime)` if they never bought that rank.
     vip*, vipPlus*, mvp*, mvpPlus*: Option[DateTime]
   
   SocialMedia* = object of PlayerObject
+    ## Each social media account linked to this player.
     discord*, twitch*, twitter*, youtube*, instagram*, forums*: string
-  
-  AchievementRewardsNew* = object of PlayerObject
-    t: Table[int, DateTime]
 
   Stats* = object of PlayerObject
+    ## An object containing individual games.
     skywars*: SkywarsStats
     bedwars*: BedwarsStats
     duels*: DuelsStats
 
   Player* = object of PlayerObject
+    ## An object representing a player.
     id*, uuid*, playerName*, displayName*, mcVersionRp*: string
     mostRecentGameType*: string
     firstLogin*, lastLogin*, lastLogout*: DateTime
-    lastClaimedReward*: Option[DateTime]
     knownAliases*, knownAliasesLower*, achievementsOneTime*: seq[string]
     friendRequestsUuid*, achievementTracking*: seq[string]
     networkExp*, karma*, achievementPoints*: int
@@ -40,12 +33,13 @@ type
     achievements*: Table[string, int]
     socialMedia*: SocialMedia
     rank*: Rank
-    rankPlusColor*: RankPlusColor
+    rankPlusColor*: PlusColor
     monthlyRankColor*: MonthlyRankColor
     stats*: Stats
     level*: float
 
 proc `[]`*(t: AchievementRewardsNew, k: int): DateTime =
+  ## Force `k` to be a power of 100, since that's what's used in the API.
   try:
     doAssert k mod 100 == 0
   except:
@@ -56,61 +50,22 @@ proc `[]`*(t: AchievementRewardsNew, k: int): DateTime =
 
 
 
-proc getSeq(j: JsonNode): seq[string] =
-  j.getElems.map(
-    proc(x: JsonNode): string = x.getStr
-  )
-
-proc getDTTable(j: JsonNode): AchievementRewardsNew =
-  var t = initTable[int, DateTime]()
-  try:
-    for a, b in j["achievementRewardsNew"].pairs:
-      t[a[11..^1].parseInt] = b.getDateTime
-  except KeyError: discard
-  result.t = t
-
-proc getIntTable(j: JsonNode): Table[string, int] =
-  for a, b in j.pairs: result[a] = b.getInt
-
-proc getRankPlusColor(j: JsonNode): RankPlusColor =
-  try:
-    case j.getStr
-    of "GOLD": return Gold 
-    of "GREEN": return Green
-    of "YELLOW": return Yellow
-    of "LIGHT_PURPLE": return LightPurple
-    of "WHITE": return White
-    of "BLUE": return Blue
-    of "DARK_GREEN": return DarkGreen
-    of "DARK_RED": return DarkRed
-    of "DARK_AQUA": return DarkAqua
-    of "DARK_PURPLE": return DarkPurple
-    of "DARK_GRAY": return DarkGray
-    of "BLACK": return Black
-    of "DARK_BLUE": return DarkBlue
-    else: return Red
-  except KeyError: return Gold
-
-proc getMonthlyRankColor(j: JsonNode): MonthlyRankColor =
-  if j.getStr == "AQUA": return mAqua
-  return mGold
-
 proc playerConstructor(j: JsonNode): Player =
   if j["success"].getBool != true:
     raise newException(HypixelApiError, "Hypixel API request failed. (Rate limited?)")
   
   let player = j["player"]
 
-  let uuid = player["uuid"].getStr
+  let uuid = player{"uuid"}.getStr
 
   var levelUp: LevelUp
-  try: levelUp.vip = some(player["levelUp_VIP"].getDateTime)
+  try: levelUp.vip = some(player["levelUp_VIP"].getTime) # we actually want it to crash here, so use []
   except: levelUp.vip = none(DateTime)
-  try: levelUp.vipPlus = some(player["levelUp_VIP_PLUS"].getDateTime)
+  try: levelUp.vipPlus = some(player["levelUp_VIP_PLUS"].getTime)
   except: levelUp.vipPlus = none(DateTime)
-  try: levelUp.mvp = some(player["levelUp_MVP"].getDateTime)
+  try: levelUp.mvp = some(player["levelUp_MVP"].getTime)
   except: levelUp.mvp = none(DateTime)
-  try: levelUp.mvpPlus = some(player["levelUp_MVP_PLUS"].getDateTime)
+  try: levelUp.mvpPlus = some(player["levelUp_MVP_PLUS"].getTime)
   except:levelUp.mvpPlus = none(DateTime)
 
   let sm = player{"socialMedia"}{"links"}
@@ -122,7 +77,7 @@ proc playerConstructor(j: JsonNode): Player =
   socialMedia.instagram = sm{"INSTAGRAM"}.getStr
   socialMedia.forums = sm{"HYPIXEL"}.getStr
 
-  var rank = Non
+  var rank = Non # rank heirarchy
   if isSome(levelUp.vip): rank = Vip
   if isSome(levelUp.vipPlus): rank = VipPlus
   if isSome(levelUp.mvp): rank = Mvp
@@ -136,23 +91,23 @@ proc playerConstructor(j: JsonNode): Player =
   of "f7c77d999f154a66a87dc4a51ef30d19", "9b2a30ecf8b34dfebf499c5c367383f8": rank = Owner
   of "7dee85b445b348f0891850c1be2e0ca2": rank = Sloth
   of "c1ec7a0544d84dd8a44a6eb400570ed7": rank = Mcp
-  of "b876ec32e396476ba1158438d83c67d4": rank = Pig
+  of "b876ec32e396476ba1158438d83c67d4": rank = Pig # api is dumb, use uuids for special ranks
   else: discard
 
   var stats: Stats
-  let skywars = player["stats"]["SkyWars"]
-  stats.skywars.star = player["achievements"]{"skywars_you_re_a_star"}.getInt
-  stats.skywars.heads = player["achievements"]{"skywars_heads"}.getInt
+  let skywars = player{"stats"}{"SkyWars"}
+  stats.skywars.star = player{"achievements"}{"skywars_you_re_a_star"}.getInt
+  stats.skywars.heads = player{"achievements"}{"skywars_heads"}.getInt
   stats.skywars.coins = skywars{"coins"}.getInt
   stats.skywars.kills = skywars{"kills"}.getInt
   stats.skywars.assists = skywars{"assists"}.getInt
   stats.skywars.deaths = skywars{"deaths"}.getInt
   stats.skywars.wins = skywars{"wins"}.getInt
   stats.skywars.losses = skywars{"losses"}.getInt
-  stats.skywars.kdr = stats.skywars.kills / stats.skywars.deaths.clamp(1, high(int))
+  stats.skywars.kdr = stats.skywars.kills / stats.skywars.deaths.clamp(1, high(int)) # prevent divison by zero error
   stats.skywars.wlr = stats.skywars.wins / stats.skywars.losses.clamp(1, high(int))
-  let bedwars = player["stats"]["Bedwars"]
-  stats.bedwars.star = player["achievements"]{"bedwars_level"}.getInt
+  let bedwars = player{"stats"}{"Bedwars"}
+  stats.bedwars.star = player{"achievements"}{"bedwars_level"}.getInt
   stats.bedwars.coins = bedwars{"coins"}.getInt
   stats.bedwars.winstreak = bedwars{"winstreak"}.getInt
   stats.bedwars.kills = bedwars{"kills_bedwars"}.getInt
@@ -165,7 +120,7 @@ proc playerConstructor(j: JsonNode): Player =
   stats.bedwars.kdr = stats.bedwars.kills / stats.bedwars.deaths.clamp(1, high(int))
   stats.bedwars.fkdr = stats.bedwars.finalKills / stats.bedwars.finalDeaths.clamp(1, high(int))
   stats.bedwars.wlr = stats.bedwars.wins / stats.bedwars.losses.clamp(1, high(int))
-  let duels = player["stats"]["Duels"]
+  let duels = player{"stats"}{"Duels"}
   stats.duels.coins = duels{"coins"}.getInt
   stats.duels.kills = duels{"kills"}.getInt
   stats.duels.deaths = duels{"deaths"}.getInt
@@ -174,32 +129,28 @@ proc playerConstructor(j: JsonNode): Player =
   stats.duels.kdr = stats.duels.kills / stats.duels.deaths.clamp(1, high(int))
   stats.duels.wlr = stats.duels.wins / stats.duels.losses.clamp(1, high(int))
 
-  var monthlyRankColor: MonthlyRankColor
-  try: monthlyRankColor = player["monthlyRankColor"].getMonthlyRankColor
-  except KeyError: monthlyRankColor = mGold
-
   return Player(
-    id: player["_id"].getStr, 
-    uuid: uuid, 
-    playerName: player["playername"].getStr, 
-    displayName: player["displayname"].getStr, 
+    id: player{"_id"}.getStr, 
+    uuid: uuid,
+    playerName: player{"playername"}.getStr, 
+    displayName: player{"displayname"}.getStr, 
     mcVersionRp: player{"mcVersionRp"}.getStr, 
-    rankPlusColor: player.getRankPlusColor, 
+    rankPlusColor: player{"rankPlusColor"}.getPlusColor,
     mostRecentGameType: player{"mostRecentGameType"}.getStr, 
-    monthlyRankColor: monthlyRankColor,
-    firstLogin: player["firstLogin"].getDateTime, 
-    lastLogin: player["lastLogin"].getDateTime, 
-    lastLogout: player["lastLogout"].getDateTime,
+    monthlyRankColor: player{"monthlyRankColor"}.getMonthlyRankColor,
+    firstLogin: player{"firstLogin"}.getTime, 
+    lastLogin: player{"lastLogin"}.getTime, 
+    lastLogout: player{"lastLogout"}.getTime,
     knownAliases: player["knownAliases"].getSeq, 
     knownAliasesLower: player["knownAliasesLower"].getSeq, 
     achievementsOneTime: player["achievementsOneTime"].getSeq,
     friendRequestsUuid: player["friendRequestsUuid"].getSeq, 
     achievementTracking: player["achievementTracking"].getSeq, 
-    networkExp: player["networkExp"].getInt, 
-    karma: player["karma"].getInt, 
-    achievementPoints: player["achievementPoints"].getInt,
+    networkExp: player{"networkExp"}.getInt, 
+    karma: player{"karma"}.getInt, 
+    achievementPoints: player{"achievementPoints"}.getInt,
     levelUp: levelUp,
-    achievementRewardsNew: player.getDTTable,
+    achievementRewardsNew: player{"achievementRewardsNew"}.getTimeTable,
     achievements: player["achievements"].getIntTable,
     socialMedia: socialMedia,
     rank: rank,

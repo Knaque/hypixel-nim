@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.2.3"
+version       = "0.3.0"
 author        = "Reilly Moore"
 description   = "The Hypixel API, in Nim."
 license       = "MIT"

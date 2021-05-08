@@ -1,6 +1,4 @@
-import common, times, json, sequtils, httpclient, strformat, asyncdispatch, options, math, strutils
-
-const EXP_NEEDED = [100000, 150000, 250000, 500000, 750000, 1000000, 1250000, 1500000, 2000000, 2500000, 2500000, 2500000, 2500000, 2500000, 3000000]
+import hypixelcommon, times, json, sequtils, httpclient, strformat, asyncdispatch, options, strutils, getters, leveling
 
 type
   GuildObject = object of HypixelObject ## Root object for the Hypixel Guild API.
@@ -11,10 +9,10 @@ type
     exp*: int
   GuildMember* = object of GuildObject
     ## An object representing a member of a guild.
-    name*: Option[string]
+    name*: string
     joined*: DateTime
     rank*, uuid*: string
-    questParticipation*: Option[int]
+    questParticipation*: int
     expHistory*: array[7, ExpHistoryEntry]
 
   GuildRank* = object of GuildObject
@@ -52,7 +50,7 @@ type
     created*: DateTime
     joinable*, publiclyListed*: bool
     members*: seq[GuildMember]
-    banner*: Banner
+    banner*: Option[Banner]
     achievements*: Achievements
     ranks*: seq[GuildRank]
     preferredGames*: seq[string]
@@ -73,13 +71,6 @@ proc guildConstructor(j: JsonNode): Guild =
   # Construct and collect each GuildMember object.
   var members: seq[GuildMember]
   for m in guild["members"].getElems:
-    var name: Option[string]
-    try: name = some(m["name"].getStr)
-    except: name = none(string)
-
-    var questParticipation: Option[int]
-    try: questParticipation = some(m["questParticipation"].getInt)
-    except: questParticipation = none(int)
 
     var expHistory: array[7, ExpHistoryEntry]
     var c = 0
@@ -90,97 +81,90 @@ proc guildConstructor(j: JsonNode): Guild =
 
     members.add(
       GuildMember(
-        name: name,
-        joined: m["joined"].getDateTime,
-        rank: m["rank"].getStr,
-        uuid: m["uuid"].getStr,
-        questParticipation: questParticipation,
+        name: m{"name"}.getStr,
+        joined: m{"joined"}.getTime,
+        rank: m{"rank"}.getStr,
+        uuid: m{"uuid"}.getStr,
+        questParticipation: m{"questParticipation"}.getInt,
         expHistory: expHistory
       )
     )
 
   # Construct the banner field.
-  var banner: Banner
-  banner.base = guild["banner"]["Base"].getInt
-  for p in guild["banner"]["Patterns"].getElems:
-    var pattern: BannerPattern
-    pattern.pattern = p["Pattern"].getStr
-    pattern.color = p["Color"].getStr
-    banner.patterns.add(pattern)
+  proc constructBanner(): Option[Banner] =
+    var b: Banner
+    try: b.base = guild["banner"]["Base"].getInt
+    except KeyError: return none(Banner)
+    for p in guild["banner"]["Patterns"].getElems:
+      var pattern: BannerPattern
+      pattern.pattern = p["Pattern"].getStr
+      pattern.color = p["Color"].getStr
+      b.patterns.add(pattern)
+    return some(b)
+  var banner = constructBanner()
 
   # Construct and collect each GuildRank object.
   var ranks: seq[GuildRank]
   for r in guild["ranks"].getElems:
     ranks.add GuildRank(
-      name: r["name"].getStr,
-      default: r["default"].getBool,
-      tag: r["tag"].getStr,
-      created: r["created"].getDateTime,
-      priority: r["priority"].getInt
+      name: r{"name"}.getStr,
+      default: r{"default"}.getBool,
+      tag: r{"tag"}.getStr,
+      created: r{"created"}.getTime,
+      priority: r{"priority"}.getInt
     )
-  
+
   # Construct the guildExpByGameType field.
-  let gebgt = guild["guildExpByGameType"]
+  let gebgt = guild{"guildExpByGameType"}
   var guildExpByGameType = GuildExpByGameType(
-    bedwars: gebgt["BEDWARS"].getInt, speedUhc: gebgt["SPEED_UHC"].getInt,
-    tntGames: gebgt["TNTGAMES"].getInt,
-    buildBattle: gebgt["BUILD_BATTLE"].getInt, uhc: gebgt["UHC"].getInt,
-    legacy: gebgt["LEGACY"].getInt, arena: gebgt["ARENA"].getInt,
-    housing: gebgt["HOUSING"].getInt, walls: gebgt["WALLS"].getInt,
-    skywars: gebgt["SKYWARS"].getInt, pit: gebgt["PIT"].getInt,
-    paintball: gebgt["PAINTBALL"].getInt,
-    battleground: gebgt["BATTLEGROUND"].getInt,
-    quakecraft: gebgt["QUAKECRAFT"].getInt, mcgo: gebgt["MCGO"].getInt,
-    duels: gebgt["DUELS"].getInt, murderMystery: gebgt["MURDER_MYSTERY"].getInt,
-    vampirez: gebgt["VAMPIREZ"].getInt, arcade: gebgt["ARCADE"].getInt,
-    superSmash: gebgt["SUPER_SMASH"].getInt, walls3: gebgt["WALLS3"].getInt,
-    skyblock: gebgt["SKYBLOCK"].getInt, prototype: gebgt["PROTOTYPE"].getInt,
-    survivalGames: gebgt["SURVIVAL_GAMES"].getInt,
-    gingerbread: gebgt["GINGERBREAD"].getInt, replay: gebgt["REPLAY"].getInt
+    bedwars: gebgt{"BEDWARS"}.getInt, speedUhc: gebgt{"SPEED_UHC"}.getInt,
+    tntGames: gebgt{"TNTGAMES"}.getInt,
+    buildBattle: gebgt{"BUILD_BATTLE"}.getInt, uhc: gebgt{"UHC"}.getInt,
+    legacy: gebgt{"LEGACY"}.getInt, arena: gebgt{"ARENA"}.getInt,
+    housing: gebgt{"HOUSING"}.getInt, walls: gebgt{"WALLS"}.getInt,
+    skywars: gebgt{"SKYWARS"}.getInt, pit: gebgt{"PIT"}.getInt,
+    paintball: gebgt{"PAINTBALL"}.getInt,
+    battleground: gebgt{"BATTLEGROUND"}.getInt,
+    quakecraft: gebgt{"QUAKECRAFT"}.getInt, mcgo: gebgt{"MCGO"}.getInt,
+    duels: gebgt{"DUELS"}.getInt, murderMystery: gebgt{"MURDER_MYSTERY"}.getInt,
+    vampirez: gebgt{"VAMPIREZ"}.getInt, arcade: gebgt{"ARCADE"}.getInt,
+    superSmash: gebgt{"SUPER_SMASH"}.getInt, walls3: gebgt{"WALLS3"}.getInt,
+    skyblock: gebgt{"SKYBLOCK"}.getInt, prototype: gebgt{"PROTOTYPE"}.getInt,
+    survivalGames: gebgt{"SURVIVAL_GAMES"}.getInt,
+    gingerbread: gebgt{"GINGERBREAD"}.getInt, replay: gebgt{"REPLAY"}.getInt
   )
 
-  # Calculate the guild's level from its exp
-  let exp = guild["exp"].getInt
-  proc calcLevel(e: int): int =
-    var exp = e
-    var level = 0
-    for i in 0..1000:
-      var need = 0
-      if i >= EXP_NEEDED.len: need = EXP_NEEDED[^1]
-      else: need = EXP_NEEDED[i]
-      if exp - need < 0: return toInt(round((level.toFloat + (exp / need)) * 100) / 100)
-      level += 1; exp -= need
-    return 1000
+  let exp = guild{"exp"}.getInt
 
   # Construct the final Guild object and return it.
   return Guild(
-    id: guild["_id"].getStr,
-    coins: guild["coins"].getInt,
-    coinsEver: guild["coinsEver"].getInt,
-    created: guild["created"].getDateTime,
+    id: guild{"_id"}.getStr,
+    coins: guild{"coins"}.getInt,
+    coinsEver: guild{"coinsEver"}.getInt,
+    created: guild{"created"}.getTime,
     joinable: guild{"joinable"}.getBool,
     members: members,
-    name: guild["name"].getStr,
-    publiclyListed: guild["publiclyListed"].getBool,
+    name: guild{"name"}.getStr,
+    publiclyListed: guild{"publiclyListed"}.getBool,
     banner: banner,
-    tagColor: guild["tagColor"].getStr,
+    tagColor: guild{"tagColor"}.getStr,
     achievements: Achievements(
-      winners: guild["achievements"]["WINNERS"].getInt,
-      experienceKings: guild["achievements"]["EXPERIENCE_KINGS"].getInt,
-      onlinePlayers: guild["achievements"]["ONLINE_PLAYERS"].getInt
+      winners: guild{"achievements"}{"WINNERS"}.getInt,
+      experienceKings: guild{"achievements"}{"EXPERIENCE_KINGS"}.getInt,
+      onlinePlayers: guild{"achievements"}{"ONLINE_PLAYERS"}.getInt
     ),
     exp: exp,
-    legacyRanking: guild["legacyRanking"].getInt + 1,
+    legacyRanking: guild{"legacyRanking"}.getInt,
     ranks: ranks,
-    chatMute: guild["chatMute"].getInt,
-    preferredGames: toSeq(guild["preferredGames"].getElems).map(
+    chatMute: guild{"chatMute"}.getInt,
+    preferredGames: toSeq(guild{"preferredGames"}.getElems).map(
       proc(x: JsonNode): string = x.getStr
     ),
-    description: guild["description"].getStr,
-    nameLower: guild["name_lower"].getStr,
-    tag: guild["tag"].getStr,
+    description: guild{"description"}.getStr,
+    nameLower: guild{"name_lower"}.getStr,
+    tag: guild{"tag"}.getStr,
     guildExpByGameType: guildExpByGameType,
-    level: calcLevel(exp)
+    level: getGuildLevel(exp)
   )
 
 

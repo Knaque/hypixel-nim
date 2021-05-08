@@ -1,6 +1,6 @@
 ## This file contains no actual code; it just imports and exports everything that needs to be public.
 
-from hypixel/common import newHypixelApi, newAsyncHypixelApi
+from hypixel/hypixelcommon import newHypixelApi, newAsyncHypixelApi
 export newHypixelApi, newAsyncHypixelApi
 
 import hypixel/[guilds, players, friends]
