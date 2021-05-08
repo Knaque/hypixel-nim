@@ -59,7 +59,9 @@ type
     guildExpByGameType*: GuildExpByGameType
     level*: int
 
-
+proc gexp*(g: Guild): int =
+  ## Calling it 'gexp' might be more intuitive to some; this is the same as `g.exp`
+  g.exp
 
 proc guildConstructor(j: JsonNode): Guild =
   ## Turns the JSON into a Guild object with GuildMember and GuildRank children.
