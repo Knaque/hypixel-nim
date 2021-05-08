@@ -1,4 +1,4 @@
-import common, times, json, sequtils, httpclient, strformat, asyncdispatch, options, math
+import common, times, json, sequtils, httpclient, strformat, asyncdispatch, options, math, strutils
 
 const EXP_NEEDED = [100000, 150000, 250000, 500000, 750000, 1000000, 1250000, 1500000, 2000000, 2500000, 2500000, 2500000, 2500000, 2500000, 3000000]
 
@@ -156,7 +156,7 @@ proc guildConstructor(j: JsonNode): Guild =
     coins: guild["coins"].getInt,
     coinsEver: guild["coinsEver"].getInt,
     created: guild["created"].getDateTime,
-    joinable: guild["joinable"].getBool,
+    joinable: guild{"joinable"}.getBool,
     members: members,
     name: guild["name"].getStr,
     publiclyListed: guild["publiclyListed"].getBool,
@@ -208,7 +208,7 @@ proc getGuildFromPlayer*(api: HypixelApi or AsyncHypixelApi, uuid: string): Futu
 proc getGuildFromName*(api: HypixelApi or AsyncHypixelApi, name: string): Future[Guild] {.multisync.} =
   ## Get a Guild object from the guild's name.
   var response = await api.client.get(
-    &"https://api.hypixel.net/guild?key={api.key}&name={name}"
+    &"https://api.hypixel.net/guild?key={api.key}&name=" & name.replace(" ", "%20")
   )
   return guildConstructor(
     parseJson(
