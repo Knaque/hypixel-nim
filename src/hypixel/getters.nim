@@ -1,6 +1,7 @@
 import json, sequtils, times, strutils, tables, playercommon, options
 
 proc getSeq*(j: JsonNode): seq[string] =
+  if j == nil: return newSeq[string]()
   j.getElems.map(
     proc(x: JsonNode): string = x.getStr
   )
@@ -16,6 +17,7 @@ proc getTimeTable*(j: JsonNode): AchievementRewardsNew =
   result.t = t
 
 proc getIntTable*(j: JsonNode): Table[string, int] =
+  if j == nil: return initTable[string, int]()
   for a, b in j.pairs: result[a] = b.getInt
 
 proc getOptionalTime*(j: JsonNode, f: string): Option[DateTime] =
