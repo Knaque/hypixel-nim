@@ -1,4 +1,6 @@
-import json, sequtils, times, strutils, tables, playercommon, options
+import json, sequtils, times, strutils, tables, playercommon, options, unicode
+
+const valid_digits = ["0".runeAt(0), "1".runeAt(0), "2".runeAt(0), "3".runeAt(0), "4".runeAt(0), "5".runeAt(0), "6".runeAt(0), "7".runeAt(0), "8".runeAt(0), "9".runeAt(0)]
 
 proc getSeq*(j: JsonNode): seq[string] =
   if j == nil: return newSeq[string]()
@@ -44,3 +46,14 @@ proc getPlusColor*(j: JsonNode): PlusColor =
 proc getMonthlyRankColor*(j: JsonNode): MonthlyRankColor =
   if j.getStr == "AQUA": return AquaMonthly
   return GoldMonthly
+
+proc getSkywarsStar*(a, b: JsonNode): int =
+  if a == nil:
+    if b == nil: return 0
+    let r = b.getStr.toRunes
+    var b: seq[Rune]
+    for i, c in r[1..^1]:
+      if c in valid_digits and r[i] != "§".runeAt(0):
+        b.add c
+    return parseInt $b
+  return a.getInt

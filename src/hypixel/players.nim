@@ -96,7 +96,7 @@ proc playerConstructor(j: JsonNode): Player =
 
   var stats: Stats
   let skywars = player{"stats"}{"SkyWars"}
-  stats.skywars.star = player{"achievements"}{"skywars_you_re_a_star"}.getInt
+  stats.skywars.star = getSkywarsStar(player{"achievements"}{"skywars_you_re_a_star"}, skywars{"levelFormatted"})
   stats.skywars.heads = player{"achievements"}{"skywars_heads"}.getInt
   stats.skywars.coins = skywars{"coins"}.getInt
   stats.skywars.kills = skywars{"kills"}.getInt
