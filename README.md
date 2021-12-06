@@ -1,4 +1,4 @@
-![hypixel-nim banner](https://possum.page/ext/hypixel_banner.png)
+![hypixel-nim banner](https://tonogr.am/ext/hypixel_banner.png)
 
 A pure-Nim interface for the Hypixel API.
 
